@@ -1,8 +1,7 @@
 //!
 
-#![allow(dead_code)]
-
 mod error;
+mod utils;
 
 use error::{Error, Result};
 use proc_macro2::TokenStream;
@@ -15,11 +14,14 @@ use syn::{
     token::{Bracket, Comma},
     Ident, Visibility,
 };
+use utils::to_snake_case;
 
 struct ErroriumArgs {
     visibility: Visibility,
     master_error_struct_ident: Ident,
+    #[allow(unused)]
     comma_token: Comma,
+    #[allow(unused)]
     bracket_token: Bracket,
     error_type_idents: Vec<Ident>,
 }
@@ -79,7 +81,7 @@ fn generate(args: ErroriumArgs) -> Result<TokenStream> {
 
         #master_error_def
     };
-    println!("{res}");
+    println!("{}", res);
     Ok(res)
 }
 
@@ -106,30 +108,78 @@ fn generate_error_type(visibility: &Visibility, ident: &Ident) -> TokenStream {
 fn generate_master_error(
     visibility: &Visibility, master_ident: &Ident, error_type_idents: &[Ident],
 ) -> TokenStream {
-    let variants = error_type_idents.iter().map(|i| {
-        quote! { #i(#i), }
-    });
-    let enum_def = quote! {
-        #visibility enum #master_ident
-        {
-            #(#variants)*
-        }
-
-    };
-
-    let from_defs = error_type_idents.iter().map(|i| {
-        quote! {
-            impl From<#i> for #master_ident {
-                fn from(err: #i) -> Self {
-                    Self::#i(err)
-                }
-            }
-        }
-    });
+    let enum_def = generate_master_error_enum(visibility, master_ident, error_type_idents);
+    let from_defs = generate_master_error_from(master_ident, error_type_idents);
+    let consume_def = generate_master_error_consume(visibility, master_ident, error_type_idents);
 
     quote! {
         #enum_def
 
         #(#from_defs)*
+
+        #consume_def
+    }
+}
+
+fn generate_master_error_enum(
+    visibility: &Visibility, master_ident: &Ident, error_type_idents: &[Ident],
+) -> TokenStream {
+    let variants = error_type_idents.iter().map(|i| {
+        quote! { #i(#i), }
+    });
+    quote! {
+        #visibility enum #master_ident
+        {
+            #(#variants)*
+        }
+
+    }
+}
+
+fn generate_master_error_from(
+    master_ident: &Ident, error_type_idents: &[Ident],
+) -> Vec<TokenStream> {
+    error_type_idents
+        .iter()
+        .map(|i| {
+            quote! {
+                impl From<#i> for #master_ident {
+                    fn from(err: #i) -> Self {
+                        Self::#i(err)
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
+fn generate_master_error_consume(
+    visibility: &Visibility, master_ident: &Ident, error_type_idents: &[Ident],
+) -> TokenStream {
+    let args_def = error_type_idents.iter().map(|i| {
+        let arg_name = format!("{}_handler", to_snake_case(i.to_string()));
+        let arg_ident = Ident::new(&arg_name, i.span());
+        quote! {
+            #arg_ident: F,
+        }
+    });
+
+    let match_arms_def = error_type_idents.iter().map(|i| {
+        let arg_name = format!("{}_handler", to_snake_case(i.to_string()));
+        let arg_ident = Ident::new(&arg_name, i.span());
+        quote! {
+            Self::#i(err) => #arg_ident(err.0),
+        }
+    });
+
+    quote! {
+        impl #master_ident {
+            #visibility fn consume<F>(self, #(#args_def)*)
+            where F: FnOnce(errorium::anyhow::Error) {
+                match self {
+                    #(#match_arms_def)*
+                }
+            }
+        }
     }
 }

@@ -4,10 +4,6 @@ use errorium::errorium;
 
 errorium!(Error, [ExpectedErr, UnexpectedErr]);
 
-impl Error {
-    pub fn consume(self) {}
-}
-
 fn expected_err() -> Result<(), ExpectedErr> {
     Err(ExpectedErr(anyhow::anyhow!("expected error")))
 }
@@ -28,7 +24,13 @@ fn some_func() -> Result<(), Error> {
     unexpected_err()?;
     expected_err()?;
     anyhow_err().map_err(ExpectedErr::new)?;
-    io_err().map_err(ExpectedErr::new)?;
+    io_err().map_err(UnexpectedErr::new)?;
 
     Ok(())
+}
+
+fn execute() {
+    if let Err(err) = some_func() {
+        err.consume(|_err| {}, |_err| {});
+    }
 }
