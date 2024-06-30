@@ -69,7 +69,7 @@ fn generate(args: ErroriumArgs) -> Result<TokenStream> {
 
     let error_types_def = error_type_idents
         .iter()
-        .map(|ident| generate_error_type(&visibility, &ident));
+        .map(|ident| generate_error_type(&visibility, ident));
 
     let master_error_def =
         generate_master_error(&visibility, &master_error_struct_ident, &error_type_idents);
