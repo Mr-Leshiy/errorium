@@ -5,7 +5,17 @@ version.workspace = true
 authors.workspace = true
 license.workspace = true
 
-[dependencies]
-
 [lints]
 workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { workspace = true }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+errorium = { workspace = true }

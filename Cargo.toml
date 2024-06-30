@@ -47,3 +47,11 @@ unreachable = "deny"
 missing_docs_in_private_items = "deny"
 
 [workspace.dependencies]
+errorium = { path = "errorium" }
+errorium-derive = { path = "errorium-derive" }
+
+syn = "2.0"
+quote = "1.0"
+proc-macro2 = "1.0"
+thiserror = "1.0.61"
+anyhow = "1.0.86"
