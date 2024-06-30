@@ -160,7 +160,7 @@ fn generate_master_error_consume(
         let arg_name = format!("{}_handler", to_snake_case(i.to_string()));
         let arg_ident = Ident::new(&arg_name, i.span());
         quote! {
-            #arg_ident: F,
+            #arg_ident: impl FnOnce(errorium::anyhow::Error),
         }
     });
 
@@ -174,8 +174,7 @@ fn generate_master_error_consume(
 
     quote! {
         impl #master_ident {
-            #visibility fn consume<F>(self, #(#args_def)*)
-            where F: FnOnce(errorium::anyhow::Error) {
+            #visibility fn consume(self, #(#args_def)*) {
                 match self {
                     #(#match_arms_def)*
                 }
