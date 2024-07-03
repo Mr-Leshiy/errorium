@@ -1,4 +1,4 @@
-//! Error definition for `errorium-derive`
+//! Error definition for `errorium-macro`
 
 use proc_macro2::TokenStream;
 use quote::quote;

@@ -1,5 +1,5 @@
 [package]
-name = "errorium-derive"
+name = "errorium-macro"
 edition.workspace = true
 version.workspace = true
 authors.workspace = true

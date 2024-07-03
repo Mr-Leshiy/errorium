@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "errorium",
-    "errorium-derive"
+    "errorium-macro"
 ]
 
 
@@ -47,7 +47,7 @@ unreachable = "deny"
 
 [workspace.dependencies]
 errorium = { path = "errorium" }
-errorium-derive = { path = "errorium-derive" }
+errorium-macro = { path = "errorium-macro" }
 
 syn = "2.0"
 quote = "1.0"
