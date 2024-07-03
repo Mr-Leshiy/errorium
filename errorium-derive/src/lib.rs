@@ -1,4 +1,4 @@
-//!
+//! `errorium` macro definitions crate, with all corresponding procedural macros implementation.
 
 mod error;
 mod utils;
@@ -23,7 +23,7 @@ struct ErroriumArgs {
     comma_token: Comma,
     #[allow(unused)]
     bracket_token: Bracket,
-    error_type_idents: Vec<Ident>,
+    error_tag_idents: Vec<Ident>,
 }
 
 impl Parse for ErroriumArgs {
@@ -43,12 +43,13 @@ impl Parse for ErroriumArgs {
             master_error_struct_ident,
             comma_token,
             bracket_token,
-            error_type_idents,
+            error_tag_idents: error_type_idents,
         })
     }
 }
 
-///
+/// Generates a new "master" error type, which is a enumeration of all possible and provided error tags,
+/// generates for each error tag a new type which could be built from any `Error` object, the same way as `anyhow::Error` does.
 #[proc_macro]
 pub fn errorium(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let args = parse_macro_input!(input as ErroriumArgs);
@@ -59,7 +60,7 @@ fn generate(args: ErroriumArgs) -> Result<TokenStream> {
     let ErroriumArgs {
         visibility,
         master_error_struct_ident,
-        error_type_idents,
+        error_tag_idents: error_type_idents,
         ..
     } = args;
 
@@ -81,7 +82,6 @@ fn generate(args: ErroriumArgs) -> Result<TokenStream> {
 
         #master_error_def
     };
-    println!("{}", res);
     Ok(res)
 }
 
@@ -157,7 +157,7 @@ fn generate_master_error_consume(
     visibility: &Visibility, master_ident: &Ident, error_type_idents: &[Ident],
 ) -> TokenStream {
     let args_def = error_type_idents.iter().map(|i| {
-        let arg_name = format!("{}_handler", to_snake_case(i.to_string()));
+        let arg_name = format!("{}_handler", to_snake_case(i.to_string().as_str()));
         let arg_ident = Ident::new(&arg_name, i.span());
         quote! {
             #arg_ident: impl FnOnce(errorium::anyhow::Error),
@@ -165,7 +165,7 @@ fn generate_master_error_consume(
     });
 
     let match_arms_def = error_type_idents.iter().map(|i| {
-        let arg_name = format!("{}_handler", to_snake_case(i.to_string()));
+        let arg_name = format!("{}_handler", to_snake_case(i.to_string().as_str()));
         let arg_ident = Ident::new(&arg_name, i.span());
         quote! {
             Self::#i(err) => #arg_ident(err.0),

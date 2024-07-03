@@ -1,4 +1,4 @@
-pub(crate) fn to_snake_case(s: String) -> String {
+pub(crate) fn to_snake_case(s: &str) -> String {
     s.chars()
         .enumerate()
         .flat_map(|(i, c)| {
@@ -19,9 +19,9 @@ mod tests {
 
     #[test]
     fn to_snake_case_test() {
-        assert_eq!(to_snake_case("FooBar".to_string()), "foo_bar");
-        assert_eq!(to_snake_case("fooBar".to_string()), "foo_bar");
-        assert_eq!(to_snake_case("foobar".to_string()), "foobar");
-        assert_eq!(to_snake_case("Foobar".to_string()), "foobar");
+        assert_eq!(to_snake_case("FooBar"), "foo_bar");
+        assert_eq!(to_snake_case("fooBar"), "foo_bar");
+        assert_eq!(to_snake_case("foobar"), "foobar");
+        assert_eq!(to_snake_case("Foobar"), "foobar");
     }
 }

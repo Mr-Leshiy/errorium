@@ -31,6 +31,6 @@ fn some_func() -> Result<(), Error> {
 
 fn execute() {
     if let Err(err) = some_func() {
-        err.consume(|_| {},  |_| {});
+        err.consume(|_| {}, |_| {});
     }
 }
