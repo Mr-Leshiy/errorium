@@ -2,23 +2,28 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    name: Rust build
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --all-targets
-    - name: Lints
-      run: cargo +nightly fmt && cargo clippy --all-targets
-    - name: Run tests
-      run: cargo test
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
+      - name: Lints
+        run: cargo +nightly fmt && cargo clippy --all-targets
+      - name: Build
+        run: cargo build --all-targets
+      - name: Run tests
+        run: cargo test
