@@ -1,4 +1,5 @@
-//! `errorium` macro definitions crate, with all corresponding procedural macros implementation.
+//! `errorium` macro definitions crate, with all corresponding procedural macros
+//! implementation.
 
 mod error;
 mod utils;
@@ -48,8 +49,9 @@ impl Parse for ErroriumArgs {
     }
 }
 
-/// Generates a new "master" error type, which is a enumeration of all possible and provided error tags,
-/// generates for each error tag a new type which could be built from any `Error` object, the same way as `anyhow::Error` does.
+/// Generates a new "master" error type, which is a enumeration of all possible and
+/// provided error tags, generates for each error tag a new type which could be built from
+/// any `Error` object, the same way as `anyhow::Error` does.
 #[proc_macro]
 pub fn errorium(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let args = parse_macro_input!(input as ErroriumArgs);
