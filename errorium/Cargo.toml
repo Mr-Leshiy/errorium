@@ -9,5 +9,8 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
 errorium-macro = { workspace = true }
+
+[dev-dependencies]
+thiserror = { workspace = true }
+anyhow = { workspace = true }

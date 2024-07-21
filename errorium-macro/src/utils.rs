@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub(crate) fn to_snake_case(s: &str) -> String {
     s.chars()
         .enumerate()
