@@ -17,7 +17,7 @@ struct ErrorTagArgs {
 
 impl Parse for ErrorTags {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let tags = Punctuated::<ErrorTagArgs, Comma>::parse_terminated(&input)?
+        let tags = Punctuated::<ErrorTagArgs, Comma>::parse_terminated(input)?
             .into_iter()
             .collect();
 
@@ -104,6 +104,7 @@ fn generate_tag_type_impl<'a>(
                 } #(#handle_tag_conditions)*
             }
 
+            #[allow(clippy::self_named_constructors)]
             fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Self {
                 Self(val.into())
             }

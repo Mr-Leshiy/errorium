@@ -6,7 +6,7 @@ errorium::tags!(Tag);
 #[test]
 fn error_conversion_test() {
     fn fmt_error() -> Result<(), std::fmt::Error> {
-        Err(std::fmt::Error.into())
+        Err(std::fmt::Error)
     }
 
     fn anyhow_error() -> anyhow::Result<()> {
@@ -42,9 +42,9 @@ fn tag_propagation_test() {
         fun1()
     }
 
+    #[allow(clippy::unreachable)]
     let Err(res) = fun2() else {
-        assert!(false);
-        return;
+        unreachable!();
     };
 
     // check the tag propagation
