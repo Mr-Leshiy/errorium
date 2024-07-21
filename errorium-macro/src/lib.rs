@@ -8,49 +8,24 @@ use error::{Error, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    bracketed,
-    parse::Parse,
-    parse_macro_input,
-    punctuated::Punctuated,
-    token::{Bracket, Comma},
-    Ident, Visibility,
+    parse::Parse, parse_macro_input, punctuated::Punctuated, token::Comma, Ident, Visibility,
 };
 use utils::to_snake_case;
 
-struct ErroriumArgs {
-    visibility: Visibility,
-    main_error_struct_ident: Ident,
-    #[allow(unused)]
-    comma_token: Comma,
-    #[allow(unused)]
-    bracket_token: Bracket,
-    error_tags: Vec<ErrorTagArgs>,
-}
+struct ErrorTags(Vec<ErrorTagArgs>);
 
 struct ErrorTagArgs {
     visibility: Visibility,
     ident: Ident,
 }
 
-impl Parse for ErroriumArgs {
+impl Parse for ErrorTags {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let visibility = input.parse()?;
-        let main_error_struct_ident = input.parse()?;
-        let comma_token = input.parse::<Comma>()?;
-
-        let content;
-        let bracket_token = bracketed!(content in input);
-        let error_tags = Punctuated::<ErrorTagArgs, Comma>::parse_terminated(&content)?
+        let tags = Punctuated::<ErrorTagArgs, Comma>::parse_terminated(&input)?
             .into_iter()
             .collect();
 
-        Ok(Self {
-            visibility,
-            main_error_struct_ident,
-            comma_token,
-            bracket_token,
-            error_tags,
-        })
+        Ok(Self(tags))
     }
 }
 
@@ -67,91 +42,85 @@ impl Parse for ErrorTagArgs {
 /// provided error tags, generates for each error tag a new type which could be built from
 /// any `Error` object, the same way as `anyhow::Error` does.
 #[proc_macro]
-pub fn errorium(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let args = parse_macro_input!(input as ErroriumArgs);
+pub fn tags(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let args = parse_macro_input!(input as ErrorTags);
     generate(args).unwrap_or_else(Into::into).into()
 }
 
-fn generate(args: ErroriumArgs) -> Result<TokenStream> {
-    let ErroriumArgs {
-        visibility,
-        main_error_struct_ident,
-        error_tags: error_type_idents,
-        ..
-    } = args;
+fn generate(tags: ErrorTags) -> Result<TokenStream> {
+    let ErrorTags(tags) = tags;
 
-    if error_type_idents.is_empty() {
+    if tags.is_empty() {
         return Err(Error::Other(
-            "It should be at least one error type ident".to_string(),
+            "It should be at least one error tag".to_string(),
         ));
     }
 
-    let error_types_def = error_type_idents
+    let error_tags_def = tags
         .iter()
-        .map(|tag| generate_error_tag_type(&tag.visibility, &tag.ident));
-
-    let main_error_def =
-        generate_main_error(&visibility, &main_error_struct_ident, &error_type_idents);
+        .map(|tag| generate_error_tag(&tag.visibility, &tag.ident));
 
     let res = quote! {
-        #(#error_types_def)*
-
-        #main_error_def
+        #(#error_tags_def)*
     };
     Ok(res)
 }
 
-fn generate_error_tag_type(visibility: &Visibility, ident: &Ident) -> TokenStream {
-    quote! {
-        #visibility struct #ident(errorium::anyhow::Error);
+fn generate_error_tag(visibility: &Visibility, ident: &Ident) -> TokenStream {
+    let tag_type_def = quote! {
+        #[derive(Debug)]
+        #visibility struct #ident(Box<dyn std::error::Error + Send + Sync + 'static>);
+    };
 
+    let tag_type_impl_def = quote! {
         impl #ident {
-            #[allow(dead_code)]
-            pub fn new(err: impl Into<errorium::anyhow::Error>) -> Self {
-                Self(err.into())
+            #visibility fn handle<F>(err: Box<dyn std::error::Error>, handler: F)
+            where F: FnOnce(&dyn std::error::Error) {
+                if let Some(tag) = err.downcast_ref::<#ident>() {
+                    handler(tag.0.as_ref());
+                }
             }
-        }
 
-        impl<E> From<E> for #ident
-        where E: Into<errorium::anyhow::Error>
-        {
-            fn from(err: E) -> Self {
-                Self(err.into())
+            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Self {
+                Self(val.into())
             }
         }
+    };
+
+    let tag_type_std_traits_impl_def = quote! {
+
+        impl std::fmt::Display for #ident {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+        impl std::error::Error for #ident {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                self.0.source()
+            }
+        }
+    };
+
+    quote! {
+        #tag_type_def
+
+        #tag_type_impl_def
+
+        #tag_type_std_traits_impl_def
     }
 }
 
+#[allow(dead_code)]
 fn generate_main_error(
     main_visibility: &Visibility, main_ident: &Ident, error_tags: &[ErrorTagArgs],
 ) -> TokenStream {
-    let enum_def = generate_main_error_enum(main_visibility, main_ident, error_tags);
     let from_defs = generate_main_error_from(main_ident, error_tags);
     let consume_def = generate_main_error_consume(main_visibility, main_ident, error_tags);
 
     quote! {
-        #enum_def
-
         #(#from_defs)*
 
         #consume_def
-    }
-}
-
-fn generate_main_error_enum(
-    main_visibility: &Visibility, main_ident: &Ident, error_tags: &[ErrorTagArgs],
-) -> TokenStream {
-    let variants = error_tags.iter().map(|tag| {
-        let ident = &tag.ident;
-        quote! { #ident(#ident), }
-    });
-    quote! {
-        #[allow(dead_code)]
-        #main_visibility enum #main_ident
-        {
-            #(#variants)*
-        }
-
     }
 }
 
