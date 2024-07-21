@@ -29,7 +29,6 @@ impl Parse for ErrorTagArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let visibility = input.parse()?;
         let ident = input.parse()?;
-
         Ok(Self { visibility, ident })
     }
 }
