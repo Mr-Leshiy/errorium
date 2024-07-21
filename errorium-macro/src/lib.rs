@@ -10,7 +10,6 @@ use quote::quote;
 use syn::{
     parse::Parse, parse_macro_input, punctuated::Punctuated, token::Comma, Ident, Visibility,
 };
-use utils::to_snake_case;
 
 struct ErrorTags(Vec<ErrorTagArgs>);
 
@@ -56,9 +55,15 @@ fn generate(tags: ErrorTags) -> Result<TokenStream> {
         ));
     }
 
-    let error_tags_def = tags
-        .iter()
-        .map(|tag| generate_error_tag(&tag.visibility, &tag.ident));
+    let error_tags_def = tags.iter().map(|tag| {
+        generate_error_tag(
+            &tag.visibility,
+            &tag.ident,
+            tags.iter()
+                .filter(|t| t.ident == tag.ident)
+                .map(|t| &t.ident),
+        )
+    });
 
     let res = quote! {
         #(#error_tags_def)*
@@ -66,40 +71,17 @@ fn generate(tags: ErrorTags) -> Result<TokenStream> {
     Ok(res)
 }
 
-fn generate_error_tag(visibility: &Visibility, ident: &Ident) -> TokenStream {
+fn generate_error_tag<'a>(
+    visibility: &'a Visibility, ident: &'a Ident, other_tags: impl Iterator<Item = &'a Ident>,
+) -> TokenStream {
     let tag_type_def = quote! {
         #[derive(Debug)]
         #visibility struct #ident(Box<dyn std::error::Error + Send + Sync + 'static>);
     };
 
-    let tag_type_impl_def = quote! {
-        impl #ident {
-            #visibility fn handle<F>(err: Box<dyn std::error::Error>, handler: F)
-            where F: FnOnce(&dyn std::error::Error) {
-                if let Some(tag) = err.downcast_ref::<#ident>() {
-                    handler(tag.0.as_ref());
-                }
-            }
+    let tag_type_impl_def = generate_tag_type(visibility, ident, other_tags);
 
-            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Self {
-                Self(val.into())
-            }
-        }
-    };
-
-    let tag_type_std_traits_impl_def = quote! {
-
-        impl std::fmt::Display for #ident {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                self.0.fmt(f)
-            }
-        }
-        impl std::error::Error for #ident {
-            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-                self.0.source()
-            }
-        }
-    };
+    let tag_type_std_traits_impl_def = generate_tag_std_traits_impl(ident);
 
     quote! {
         #tag_type_def
@@ -110,64 +92,43 @@ fn generate_error_tag(visibility: &Visibility, ident: &Ident) -> TokenStream {
     }
 }
 
-#[allow(dead_code)]
-fn generate_main_error(
-    main_visibility: &Visibility, main_ident: &Ident, error_tags: &[ErrorTagArgs],
+fn generate_tag_type<'a>(
+    visibility: &'a Visibility, ident: &'a Ident, other_tags: impl Iterator<Item = &'a Ident>,
 ) -> TokenStream {
-    let from_defs = generate_main_error_from(main_ident, error_tags);
-    let consume_def = generate_main_error_consume(main_visibility, main_ident, error_tags);
+    let handle_tag_conditions = other_tags.map(|ident| {
+        quote! {
+            else if let Some(tag) = err.downcast_ref::<#ident>() {
+                Self::handle(tag.0.as_ref(), handler);
+            }
+        }
+    });
 
     quote! {
-        #(#from_defs)*
+        impl #ident {
+            #visibility fn handle<F>(err: &(dyn std::error::Error + 'static), handler: F)
+            where F: FnOnce(&dyn std::error::Error) {
+                if let Some(tag) = err.downcast_ref::<#ident>() {
+                    handler(tag.0.as_ref());
+                } #(#handle_tag_conditions)*
+            }
 
-        #consume_def
+            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Self {
+                Self(val.into())
+            }
+        }
     }
 }
 
-fn generate_main_error_from(main_ident: &Ident, error_tags: &[ErrorTagArgs]) -> Vec<TokenStream> {
-    error_tags
-        .iter()
-        .map(|tag| {
-            let i = &tag.ident;
-            quote! {
-                impl From<#i> for #main_ident {
-                    fn from(err: #i) -> Self {
-                        Self::#i(err)
-                    }
-                }
-            }
-        })
-        .collect()
-}
-
-fn generate_main_error_consume(
-    main_visibility: &Visibility, main_ident: &Ident, error_tags: &[ErrorTagArgs],
-) -> TokenStream {
-    let args_def = error_tags.iter().map(|tag| {
-        let i = &tag.ident;
-        let arg_name = format!("{}_handler", to_snake_case(i.to_string().as_str()));
-        let arg_ident = Ident::new(&arg_name, i.span());
-        quote! {
-            #arg_ident: impl FnOnce(errorium::anyhow::Error),
-        }
-    });
-
-    let match_arms_def = error_tags.iter().map(|tag| {
-        let i = &tag.ident;
-        let arg_name = format!("{}_handler", to_snake_case(i.to_string().as_str()));
-        let arg_ident = Ident::new(&arg_name, i.span());
-        quote! {
-            Self::#i(err) => #arg_ident(err.0),
-        }
-    });
-
+fn generate_tag_std_traits_impl(ident: &Ident) -> TokenStream {
     quote! {
-        impl #main_ident {
-            #[allow(dead_code)]
-            #main_visibility fn consume(self, #(#args_def)*) {
-                match self {
-                    #(#match_arms_def)*
-                }
+        impl std::fmt::Display for #ident {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+        impl std::error::Error for #ident {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                self.0.source()
             }
         }
     }
