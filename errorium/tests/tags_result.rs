@@ -33,7 +33,7 @@ fn error_conversion_test() {
 #[test]
 fn tag_propagation_test() {
     fn tagged_error() -> errorium::Result<()> {
-        Err(Tag::tag(std::fmt::Error))
+        Err(Tag::tag(std::fmt::Error).into())
     }
     fn fun1() -> errorium::Result<()> {
         tagged_error()

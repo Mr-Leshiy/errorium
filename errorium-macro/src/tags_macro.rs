@@ -71,7 +71,7 @@ fn generate_error_tag<'a>(
         #visibility struct #ident(Box<dyn std::error::Error + Send + Sync + 'static>);
     };
 
-    let tag_type_impl_def = generate_tag_type(visibility, ident, other_tags);
+    let tag_type_impl_def = generate_tag_type_impl(visibility, ident, other_tags);
 
     let tag_type_std_traits_impl_def = generate_tag_std_traits_impl(ident);
 
@@ -84,7 +84,7 @@ fn generate_error_tag<'a>(
     }
 }
 
-fn generate_tag_type<'a>(
+fn generate_tag_type_impl<'a>(
     visibility: &'a Visibility, ident: &'a Ident, other_tags: impl Iterator<Item = &'a Ident>,
 ) -> TokenStream {
     let handle_tag_conditions = other_tags.map(|ident| {
@@ -98,14 +98,14 @@ fn generate_tag_type<'a>(
     quote! {
         impl #ident {
             #visibility fn handle<F>(err: &(dyn std::error::Error + 'static), handler: F)
-            where F: FnOnce(&dyn std::error::Error) {
+            where F: FnOnce(&(dyn std::error::Error + 'static)) {
                 if let Some(tag) = err.downcast_ref::<#ident>() {
                     handler(tag.0.as_ref());
                 } #(#handle_tag_conditions)*
             }
 
-            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Box<Self> {
-                Self(val.into()).into()
+            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Self {
+                Self(val.into())
             }
         }
     }
