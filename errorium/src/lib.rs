@@ -10,6 +10,8 @@ pub use errorium_macro::*;
 
 /// `Result<T, Box<dyn std::error::Error>>` type alias
 ///
-/// As `errorium` based on the `Box<dyn std::error::Error>` generic type, this type alias
-/// will reduce the boilerplate code in your application.
+/// A necessary type alias to maintain and keep correct tagging propagation through the
+/// call stack.
+/// As `errorium` based on the `Box<dyn std::error::Error>` generic type, this
+/// type alias will reduce the boilerplate code in your application.
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;

@@ -112,8 +112,8 @@ fn generate_tag_type<'a>(
                 } #(#handle_tag_conditions)*
             }
 
-            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Self {
-                Self(val.into())
+            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Box<Self> {
+                Self(val.into()).into()
             }
         }
     }
