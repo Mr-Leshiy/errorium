@@ -41,8 +41,6 @@ fn tags_std_traits() {
     // check std::fmt::Display trait impl
     assert_eq!(format!("{err}"), format!("{tag1}"));
     assert_eq!(format!("{err}"), format!("{tag2}"));
-    // assert_eq!(format!("{err}"), format!("{tag1:?}"));
-    // assert_eq!(format!("{err}"), format!("{tag2:?}"));
 
     // check std::error::Error trait impl
     let _unused = Box::<dyn std::error::Error>::from(tag1);
