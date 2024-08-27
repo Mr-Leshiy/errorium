@@ -43,6 +43,6 @@ fn tags_std_traits() {
     assert_eq!(format!("{err}"), format!("{tag2}"));
 
     // check std::error::Error trait impl
-    let _unused = Box::<dyn std::error::Error>::from(tag1);
-    let _unused = Box::<dyn std::error::Error>::from(tag2);
+    let _unused = errorium::Error::from(tag1);
+    let _unused = errorium::Error::from(tag2);
 }

@@ -6,10 +6,14 @@
 //! It works on the ground of the [anyhow](https://docs.rs/anyhow/latest/anyhow/)
 //! with additional error type safety by providing error "taging".
 
-pub use errorium_macro::*;
+mod errors;
 
-/// `Box<dyn std::error::Error>` type alias
-pub type Error = Box<dyn std::error::Error>;
+pub use errorium_macro::*;
+pub use errors::Errors;
+
+/// `Box<dyn 'static + std::error::Error + Send + Sync>` type alias,
+/// which is a base error type definition for `errorium`.
+pub type Error = Box<dyn 'static + std::error::Error + Send + Sync>;
 
 /// `Result<T, Box<dyn std::error::Error>>` type alias
 ///

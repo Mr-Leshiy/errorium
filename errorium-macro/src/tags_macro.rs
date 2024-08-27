@@ -68,7 +68,7 @@ fn generate_error_tag<'a>(
 ) -> TokenStream {
     let tag_type_def = quote! {
         #[derive(Debug)]
-        #visibility struct #ident(Box<dyn std::error::Error + Send + Sync + 'static>);
+        #visibility struct #ident(errorium::Error);
     };
 
     let tag_type_impl_def = generate_tag_type_impl(visibility, ident, other_tags);
@@ -105,7 +105,7 @@ fn generate_tag_type_impl<'a>(
             }
 
             #[allow(clippy::self_named_constructors)]
-            fn tag<T: Into<Box<dyn std::error::Error + Send + Sync + 'static>>>(val: T) -> Self {
+            fn tag<T: Into<errorium::Error>>(val: T) -> Self {
                 Self(val.into())
             }
         }

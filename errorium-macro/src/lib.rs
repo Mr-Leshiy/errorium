@@ -4,7 +4,6 @@
 use proc_macro::TokenStream;
 
 mod error;
-mod errors_macro;
 mod tags_macro;
 mod utils;
 
@@ -13,10 +12,4 @@ mod utils;
 #[proc_macro]
 pub fn tags(input: TokenStream) -> TokenStream {
     tags_macro::generate(input)
-}
-
-/// Something
-#[proc_macro_attribute]
-pub fn errors(attr: TokenStream, input: TokenStream) -> TokenStream {
-    errors_macro::generate(attr, input)
 }
