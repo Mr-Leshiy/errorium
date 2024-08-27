@@ -1,20 +1,10 @@
 //! `errorium::errors` attribute macro implmenentation.
 
-#![allow(dead_code)]
-
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse, parse_macro_input, Attribute, Block, Expr, ItemFn, Stmt, Token};
+use quote::quote;
+use syn::{parse, parse_macro_input, Block, ItemFn, Stmt};
 
 use crate::error::Result;
-
-/// Special `return result ...` expression
-struct ExprReturnResult {
-    attrs: Vec<Attribute>,
-    return_token: Token![return],
-    result_token: Token![return],
-    expr: Option<Box<Expr>>,
-}
 
 pub(crate) fn generate(
     _attr: proc_macro::TokenStream, input: proc_macro::TokenStream,
